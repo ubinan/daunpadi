@@ -1,0 +1,1908 @@
+
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard Anomali</title>
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Bootstrap Icons -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css" rel="stylesheet">
+	<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+	<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <style>
+                /* ================= BODY ================= */
+body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background-color: #f4f9f6;
+    margin: 0;
+    padding: 0;
+}
+
+/* ================= SIDEBAR ================= */
+.sidebar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 250px;
+    height: 100vh;
+    background: linear-gradient(180deg, #a8e6cf, #81c784);
+    color: #1b5e20;
+    padding-top: 20px;
+    box-shadow: 3px 0 15px rgba(0,0,0,0.05);
+    z-index: 1000;
+}
+
+.sidebar h4 {
+    font-weight: bold;
+    color: #1b5e20;
+}
+
+.sidebar .nav-link {
+    color: #1b5e20;
+    padding: 14px 20px;
+    margin: 6px 12px;
+    border-radius: 12px;
+    transition: all 0.3s ease;
+    font-weight: 500;
+}
+
+.sidebar .nav-link:hover {
+    background-color: rgba(255,255,255,0.5);
+    transform: translateX(5px);
+}
+
+.sidebar .nav-link.active {
+    background-color: white;
+    color: #2e7d32;
+    font-weight: bold;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.08);
+}
+
+/* ================= MAIN CONTENT ================= */
+.main-content {
+    margin-left: 250px;
+    padding: 30px;
+    min-height: 100vh;
+    box-sizing: border-box;
+}
+
+/* ================= CONTENT SECTION ================= */
+.content-section {
+    display: none;
+    width: 100%;
+}
+
+.content-section.active {
+    display: block;
+}
+
+/* ================= HEADER ================= */
+.header {
+    background: #d7f2df;
+    color: #1b5e20;
+    padding: 25px;
+    border-radius: 16px;
+    margin-bottom: 25px;
+    border-left: 6px solid #66bb6a;
+}
+
+.header h2 {
+    font-weight: 700;
+    margin: 0;
+}
+
+/* ================= CARD ================= */
+.card {
+    border: none;
+    border-radius: 16px;
+    box-shadow: 0 6px 18px rgba(0,0,0,0.05);
+    background-color: #ffffff;
+    padding: 20px;
+}
+
+/* ================= TABLE ================= */
+.table-responsive {
+    max-height: 500px;
+    overflow-y: auto;
+}
+
+#anomaliTable th {
+    position: sticky;
+    top: 0;
+    background-color: #66bb6a;
+    color: white;
+    z-index: 2;
+    font-weight: 600;
+}
+
+#anomaliTable tbody tr:hover {
+    background-color: #f1f8f4;
+    transition: 0.2s;
+}
+
+/* ================= DROPDOWN ================= */
+.form-select {
+    border-radius: 10px;
+    border: 1px solid #c8e6c9;
+    padding: 10px;
+    background-color: white;
+}
+
+.form-select:focus {
+    border-color: #66bb6a;
+    box-shadow: 0 0 0 0.2rem rgba(102,187,106,0.25);
+}
+
+/* ================= SPINNER ================= */
+.spinner-border {
+    color: #66bb6a !important;
+}
+
+/* ================= ALERT ================= */
+.alert-danger {
+    border-radius: 12px;
+}
+
+/* ================= CHART ================= */
+#chartContainer {
+    position: relative;
+    height: 400px;
+    width: 100%;
+}
+
+#myChart {
+    max-height: 400px;
+}
+
+/* ================= MAP ================= */
+#map {
+    height: 500px;
+    width: 100%;
+    border-radius: 10px;
+}
+
+.leaflet-container {
+    border-radius: 10px;
+}
+
+/* ================= TABLE UBINAN ================= */
+#tableUbinan {
+    table-layout: fixed;
+    width: 100%;
+    border-collapse: collapse;
+}
+
+#tableUbinan th,
+#tableUbinan td {
+    text-align: center;
+    vertical-align: middle;
+    padding: 4px;
+    font-size: 13px;
+    white-space: nowrap;
+    width: 80px;
+}
+
+#tableUbinan th:first-child,
+#tableUbinan td:first-child {
+    width: 150px;
+    font-weight: bold;
+}
+
+#tableUbinan thead th {
+    position: sticky;
+    z-index: 2;
+}
+
+#tableUbinan thead tr:nth-child(1) th {
+    top: 0;
+    height: 32px;
+}
+
+#tableUbinan thead tr:nth-child(2) th {
+    top: 32px;
+    background: #212529;
+    color: white;
+}
+
+#tableUbinan th.analisisHead {
+    background: #6c757d !important;
+    color: white;
+}
+
+.table-container {
+    max-height: 500px;
+    overflow-y: auto;
+}
+
+/* ================= RESPONSIVE ================= */
+@media (max-width: 768px) {
+    .sidebar {
+        width: 200px;
+    }
+
+    .main-content {
+        margin-left: 200px;
+        padding: 20px;
+    }
+}
+       
+		
+    </style>
+</head>
+<body>
+    <!-- Sidebar -->
+    <div class="sidebar">
+        <h4 class="text-center mb-4">Daun Padi</h4>
+        <nav class="nav flex-column">
+            <a class="nav-link active" href="#" data-target="anomali">
+                <i class="bi bi-exclamation-triangle"></i> Anomali
+            </a>
+            <a class="nav-link" href="#" data-target="grafik">
+                <i class="bi bi-bar-chart"></i> Grafik
+            </a>
+            <a class="nav-link" href="#" data-target="peta">
+                <i class="bi bi-geo-alt"></i> Peta
+            </a>
+            <a class="nav-link" href="#" data-target="hasil-ubinan-subround">
+                <i class="bi bi-file-earmark-text"></i> Hasil Ubinan Subround
+            </a>
+            
+            <!-- PERBAIKAN: Sama seperti menu lain, gunakan data-target -->
+            <a class="nav-link" href="#" data-target="database-petani">
+                <i class="bi bi-database"></i> Database Petani
+            </a>
+            
+            <a class="nav-link" href="#" data-target="petunjuk-teknis">
+                <i class="bi bi-info-circle"></i> Petunjuk Teknis
+            </a>
+        </nav>
+    </div>
+
+    <!-- Main Content -->
+    <div class="main-content">
+        <!-- Anomali Section -->
+        <div id="anomali" class="content-section active">
+            <div class="header">
+                <h2><i class="bi bi-exclamation-triangle"></i> Anomali</h2>
+                <p id="anomaliDescription">Halaman untuk menampilkan data anomali dari Google Sheets.</p>
+            </div>
+            <div class="card p-4">
+                <!-- Dropdown Pemilihan Sheet -->
+                <div class="mb-4">
+                    <label for="sheetSelect" class="form-label fw-bold">Pilih Sheet:</label>
+                    <select class="form-select" id="sheetSelect" onchange="loadSheetData()">
+                        <option value="">-- Pilih Sheet --</option>
+                    </select>
+                </div>
+                
+                <!-- FILTER TAMBAHAN -->
+                <div class="row mt-3">
+                    <div class="col-md-6">
+                        <label class="form-label fw-bold">Filter Kabupaten/Kota:</label>
+                        <select class="form-select" id="filterKab" onchange="applyFilters()">
+                            <option value="">-- Semua Kabupaten/Kota --</option>
+                        </select>
+                    </div>
+
+                    <div class="col-md-6">
+                        <label class="form-label fw-bold">Filter Subround:</label>
+                        <select class="form-select" id="filterSubround" onchange="applyFilters()">
+                            <option value="">-- Semua Subround --</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <!-- Loading Indicator -->
+                <div id="loadingIndicator" class="text-center my-4" style="display: none;">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">Loading...</span>
+                    </div>
+                    <p class="mt-2">Memuat data...</p>
+                </div>
+                
+                <!-- Data Table -->
+                <div class="table-responsive">
+                    <table class="table table-striped table-hover" id="anomaliTable">
+                        <thead class="table-dark" id="tableHead">
+                            <tr>
+                                <th>Pilih sheet untuk menampilkan data</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tableBody">
+                        </tbody>
+                    </table>
+                </div>
+                
+                <!-- Error Message -->
+                <div id="errorMessage" class="alert alert-danger" style="display: none;"></div>
+            </div>
+        </div>
+
+        <!-- Grafik Section -->
+        <div id="grafik" class="content-section">
+            <div class="header">
+                <h2><i class="bi bi-bar-chart"></i> Grafik</h2>
+                <p>Halaman untuk menampilkan grafik data berdasarkan Kabupaten/Kota.</p>
+            </div>
+            <div class="card p-4">
+                <!-- Dropdown Pemilihan Sheet -->
+                <div class="mb-4">
+                    <label for="sheetSelectGrafik" class="form-label fw-bold">Pilih Sheet:</label>
+                    <select class="form-select" id="sheetSelectGrafik" onchange="loadGrafikData()">
+                        <option value="">-- Pilih Sheet --</option>
+                    </select>
+                </div>
+                
+                <!-- Loading Indicator -->
+                <div id="loadingGrafik" class="text-center my-4" style="display: none;">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">Loading...</span>
+                    </div>
+                    <p class="mt-2">Memuat data grafik...</p>
+                </div>
+                
+                <!-- Chart Container -->
+                <div id="chartContainer" style="display: none;">
+                    <canvas id="myChart"></canvas>
+                </div>
+                
+                <!-- Error Message -->
+                <div id="errorGrafik" class="alert alert-danger" style="display: none;"></div>
+            </div>
+        </div>
+
+        <!-- Peta Section -->
+<div id="peta" class="content-section">
+    <div class="header">
+        <h2><i class="bi bi-geo-alt"></i> Peta</h2>
+        <p>Halaman untuk menampilkan peta interaktif.</p>
+    </div>
+    <div class="card p-4">
+        <!-- Filter Peta -->
+        <div class="row mb-3">
+            <div class="col-md-3">
+                <label class="form-label fw-bold">Filter Kabupaten:</label>
+                <select class="form-select" id="filterKabPeta" onchange="updateMap()">
+                    <option value="ALL">Semua</option>
+                </select>
+            </div>
+            <div class="col-md-3">
+                <label class="form-label fw-bold">Filter Subround:</label>
+                <select class="form-select" id="filterSubroundPeta" onchange="updateMap()">
+                    <option value="ALL">Semua</option>
+                </select>
+            </div>
+            <div class="col-md-3">
+                <label class="form-label fw-bold">Filter Subsegmen:</label>
+                <select class="form-select" id="filterSubsegmenPeta" onchange="updateMap()">
+                    <option value="ALL">Semua</option>
+                </select>
+            </div>
+            <div class="col-md-3">
+                <label class="form-label fw-bold">Filter Bulan:</label>
+                <select class="form-select" id="filterBulanPeta" onchange="updateMap()">
+                    <option value="ALL">Semua</option>
+                </select>
+            </div>
+        </div>
+        
+        <!-- Map Type Toggle -->
+        <div class="row mb-3">
+            <div class="col-md-12">
+                <label class="form-label fw-bold">Tipe Peta:</label>
+                <select class="form-select" id="mapType" style="width: 200px;">
+                    <option value="streets">Jalan</option>
+                    <option value="satellite">Satelit</option>
+                </select>
+            </div>
+        </div>
+        
+        <!-- Map Container -->
+        <div id="map" style="height: 500px; border-radius: 10px;"></div>
+        
+        <!-- Legend -->
+        <div class="mt-3">
+            <h6><strong>Legend:</strong></h6>
+            <div class="d-flex flex-wrap gap-3">
+                <span><i class="bi bi-circle-fill" style="color: blue;"></i> Utama (Alokasi)</span>
+                <span><i class="bi bi-circle-fill" style="color: black;"></i> Cadangan (Alokasi)</span>
+                <span><i class="bi bi-circle-fill" style="color: yellow;"></i> Alokasi (Realisasi)</span>
+                <span><i class="bi bi-circle-fill" style="color: red;"></i> Tambahan (Realisasi)</span>
+               
+            </div>
+        </div>
+    </div>
+</div>
+
+       <!-- Hasil Ubinan Section -->
+<div id="hasil-ubinan-subround" class="content-section">
+    <div class="header">
+        <h2><i class="bi bi-file-earmark-text"></i> Hasil Ubinan</h2>
+        <p>Halaman untuk menampilkan hasil ubinan.</p>
+    </div>
+
+    <div class="card p-4">
+
+        <!-- Dropdown Pemilihan Sheet -->
+        <div class="mb-4">
+            <label for="sheetSelectUbinan" class="form-label fw-bold">Pilih Sheet:</label>
+            <select class="form-select" id="sheetSelectUbinan" onchange="loadSheetDataUbinan()">
+                <option value="">-- Pilih Sheet --</option>
+                <option value="Tab SR">Tab SR (Subround)</option>
+                <option value="Tab Bulan">Tab Bulan (Bulanan)</option>
+            </select>
+        </div>
+
+        <!-- Loading Indicator -->
+        <div id="loadingUbinan" class="text-center my-4" style="display: none;">
+            <div class="spinner-border text-primary" role="status"></div>
+            <p class="mt-2">Memuat data...</p>
+        </div>
+
+        <!-- Search -->
+        <input type="text"
+               id="searchKodeSub"
+               placeholder="Search Kode Subsegmen (contoh: 3301)"
+               class="form-control mb-3"
+               onkeyup="filterKodeSub()">
+
+        <!-- Table -->
+        <div class="table-container">
+            <table class="table table-striped table-hover table-bordered" id="tableUbinan">
+                <thead id="tableHeadUbinan">
+                    <tr>
+                        <th>Pilih sheet untuk menampilkan data</th>
+                    </tr>
+                </thead>
+                <tbody id="tableBodyUbinan"></tbody>
+            </table>
+        </div>
+
+        <!-- Error Message -->
+        <div id="errorUbinan" class="alert alert-danger" style="display: none;"></div>
+
+    </div>
+</div>
+
+
+<!-- Database Petani Section -->
+<div id="database-petani" class="content-section">
+    <div class="header">
+        <h2><i class="bi bi-database"></i> Database Petani</h2>
+        <p>Halaman untuk menampilkan data Database Petani.</p>
+    </div>
+
+    <div class="card p-4">
+
+        <!-- Search -->
+        <input type="text"
+               id="searchPetani"
+               class="form-control mb-3"
+               placeholder="Cari Kode Subsegmen atau Nama..."
+               onkeyup="filterDatabasePetani()">
+
+        <!-- Loading -->
+        <div id="loadingPetani" class="text-center my-4" style="display: none;">
+            <div class="spinner-border text-primary" role="status"></div>
+            <p class="mt-2">Memuat data...</p>
+        </div>
+
+        <!-- Table -->
+        <div class="table-responsive">
+            <table class="table table-striped table-hover table-bordered" id="tablePetani">
+                <thead id="dbPetaniHead">
+                    <tr>
+                        <th>Kode Subsegmen</th>
+                        <th>Nama Kepala Keluarga</th>
+                        <th>NIK Kepala Keluarga</th>
+                        <th>Alamat</th>
+                        <th>Nama Pengelola UTP</th>
+                        <th>NIK Pengelola</th>
+                        <th>No HP</th>
+                    </tr>
+                </thead>
+                <tbody id="dbPetaniBody">
+                    <tr>
+                        <td colspan="7" class="text-center">
+                            Pilih sheet untuk menampilkan data
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Error -->
+        <div id="errorPetani" class="alert alert-danger" style="display: none;"></div>
+
+    </div>
+</div>
+	 
+        <!-- Petunjuk Teknis Section -->
+        <div id="petunjuk-teknis" class="content-section">
+            <div class="header">
+                <h2><i class="bi bi-info-circle"></i> Petunjuk Teknis</h2>
+                <p>Halaman untuk petunjuk teknis penggunaan sistem.</p>
+            </div>
+            <div class="card p-4">
+                <h5>Cara Menggunakan Dashboard:</h5>
+                <ol>
+                    <li>Klik menu di sidebar untuk navigasi.</li>
+                    <li>Lihat data di setiap bagian.</li>
+                    <li>Gunakan tombol untuk aksi lebih lanjut.</li>
+                </ol>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <!-- Chart.js for Grafik -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script>
+        /* ================================
+           KONFIGURASI API
+        ================================ */
+        const API_URL = "https://script.google.com/macros/s/AKfycbz5mA_cLvAEiCV2zile4fio9EkCa4nZy9aahc0wO4xAeJw5UqJGj1ctKC9ouVhBcHgkZQ/exec";
+
+        /* ================================
+           VARIABEL GLOBAL
+        ================================ */
+        let globalData = null;
+        let myChart = null;
+
+        const warningText = {
+            r108: "berisi '2. Ubinan Prakarsa/Daerah' atau '3. Ubinan Lainnya'",
+            r111: "berisi '2. Padi Ladang'",
+            r111_r702: "r111 '1. Padi Sawah' tapi r702 '5. Bukan Sawah atau r111 '2. Padi Ladang' tapi r702 '1. Sawah Irigasi'",
+            r205_r206: "r205<17 tahun, tapi r206 '5. Akademi/D1/D2/D3 atau r205<20 tahun tapi r206 '6. Perguruan Tinggi/D4/S1/S2/S3'",
+            r601_bulanmaster: "selisih pelaksanaan ubinan dan perkiraan bulan panen lebih dari 1 bulan",
+            r602: "r602<70 hari atau r602>130 hari",
+            r604a: "r604a>=0.2kg",
+            r604c: "r604c<1 kg atau r604c>7.5kg",
+            r701b: "r701b berisi 'Lainnya' namun sebenarnya masih bisa dimasukkan ke pilihan yang tersedia",
+            r701c: "r701c berisi '5. Beras Lainnya'",
+            r706: "berisi kurang dari 100 m2",
+            r707b: "penggunaan benih per hektar di luar rentang 10-86 kg/ha",
+            r708b: "penggunaan pupuk per hektar di luar rentang 150-1.000 kg/ha",
+            r709: "r709a berisi '2. Tidak' atau r709c berisi '4. Lainnya'",
+            r710: "r710b berisi lebih dari 3 kali",
+            r801b: "r801b berisi '5. Lainnya'",
+            r802b: "r802b berisi '5. Lainnya'",
+            r803c: "r803c berisi 'Lainnya' namun sebenarnya masih bisa dimasukkan ke pilihan yang tersedia",
+            r804c: "jika besarnya dampak lebih dari 50 persen",
+            r805b: "r805b berisi '4. Lainnya' namun sebenarnya masih bisa dimasukkan ke pilihan yang tersedia",
+            r805c: "jika besarnya dampak lebih dari 50 persen",
+            r901: "r901 berisi '2. Ubinan Dinas' atau r901 berisi '3. Ubinan Bersama'"
+        };
+
+        /* ================================
+   DOM READY
+================================ */
+document.addEventListener('DOMContentLoaded', function () {
+    // Load daftar sheet saat halaman pertama dibuka
+    loadSheetList();
+
+    // Sidebar navigation
+    document.querySelectorAll('.sidebar .nav-link').forEach(link => {
+        link.addEventListener('click', function (e) {
+            e.preventDefault();
+
+            const target = this.getAttribute('data-target');
+
+            // Hide semua section
+            document.querySelectorAll('.content-section').forEach(section => {
+                section.classList.remove('active');
+            });
+
+            // Tampilkan section target
+            document.getElementById(target).classList.add('active');
+
+            // Update active menu
+            document.querySelectorAll('.sidebar .nav-link').forEach(nav => {
+                nav.classList.remove('active');
+            });
+            this.classList.add('active');
+
+            // Jika klik menu Anomali dan dropdown kosong
+            if (target === 'anomali') {
+                const sheetSelect = document.getElementById('sheetSelect');
+                if (sheetSelect.options.length <= 1) {
+                    loadSheetList();
+                }
+            }
+
+            // Jika klik menu Grafik dan dropdown kosong
+            if (target === 'grafik') {
+                const sheetSelectGrafik = document.getElementById('sheetSelectGrafik');
+                if (sheetSelectGrafik.options.length <= 1) {
+                    loadSheetListGrafik();
+                }
+            }
+			
+			// Jika klik menu Hasil Ubinan
+if (target === 'hasil-ubinan-subround') {
+    // Tidak perlu load sheet list karena dropdown sudah ada pilihan
+    // Langsung load data jika ada yang dipilih
+    const sheetSelectUbinan = document.getElementById('sheetSelectUbinan');
+    if (sheetSelectUbinan.value) {
+        loadSheetDataUbinan();
+    }
+}
+
+            // ===== TAMBAHKAN INI UNTUK PETA =====
+            // Jika klik menu Peta, inisialisasi peta
+            if (target === 'peta') {
+                // Delay sedikit agar DOM ready
+                setTimeout(function() {
+                    if (!map) {
+                        initMap();
+                    } else {
+                        // Refresh map size
+                        map.invalidateSize();
+                    }
+                }, 100);
+            }
+        });
+    });
+});
+
+        /* ================================
+           LOAD DAFTAR SHEET (ANOMALI)
+        ================================ */
+        async function loadSheetList() {
+            const sheetSelect = document.getElementById('sheetSelect');
+            const errorMessage = document.getElementById('errorMessage');
+
+            try {
+                const response = await fetch(`${API_URL}?action=sheets`);
+                const result = await response.json();
+
+                console.log("Sheet list:", result);
+
+                sheetSelect.innerHTML = '<option value="">-- Pilih Sheet --</option>';
+
+                let sheets = [];
+
+                // Jika API langsung array
+                if (Array.isArray(result)) {
+                    sheets = result;
+                }
+                // Jika API pakai result.data
+                else if (result.data && Array.isArray(result.data)) {
+                    sheets = result.data;
+                }
+
+                // Render dropdown
+                sheets.forEach(sheetName => {
+                    // Jangan tampilkan Raw Data
+                    if (sheetName.toLowerCase() === "raw data") return;
+
+                    const option = document.createElement('option');
+                    option.value = sheetName;
+                    option.textContent = sheetName;
+                    sheetSelect.appendChild(option);
+                });
+
+            } catch (error) {
+                console.error("Error loadSheetList:", error);
+                errorMessage.textContent = "Gagal memuat daftar sheet: " + error.message;
+                errorMessage.style.display = "block";
+            }
+        }
+
+        /* ================================
+           LOAD DAFTAR SHEET (GRAFIK)
+        ================================ */
+        async function loadSheetListGrafik() {
+            const sheetSelect = document.getElementById('sheetSelectGrafik');
+            
+            try {
+                const response = await fetch(`${API_URL}?action=sheets`);
+                const result = await response.json();
+                
+                sheetSelect.innerHTML = '<option value="">-- Pilih Sheet --</option>';
+                
+                let sheets = [];
+                if (Array.isArray(result)) {
+                    sheets = result;
+                } else if (result.data && Array.isArray(result.data)) {
+                    sheets = result.data;
+                }
+                
+                // Filter hanya sheet R (format: R108, R111, dst)
+                sheets.forEach(sheetName => {
+                    const match = sheetName.match(/^R\d+/i);
+                    if (match) {
+                        const option = document.createElement('option');
+                        option.value = sheetName;
+                        option.textContent = sheetName;
+                        sheetSelect.appendChild(option);
+                    }
+                });
+                
+            } catch (error) {
+                console.error("Error loadSheetListGrafik:", error);
+            }
+        }
+
+        /* ================================
+           LOAD DATA SHEET (ANOMALI)
+        ================================ */
+        async function loadSheetData() {
+            const sheetSelect = document.getElementById('sheetSelect');
+            const tableHead = document.getElementById('tableHead');
+            const tableBody = document.getElementById('tableBody');
+            const loadingIndicator = document.getElementById('loadingIndicator');
+            const errorMessage = document.getElementById('errorMessage');
+
+            const selectedSheet = sheetSelect.value;
+
+            if (!selectedSheet) {
+                tableHead.innerHTML = '<tr><th>Pilih sheet untuk menampilkan data</th></tr>';
+                tableBody.innerHTML = '';
+                return;
+            }
+
+            const desc = document.getElementById("anomaliDescription");
+            const key = selectedSheet.toLowerCase().replace(/\s+/g, '');
+
+            if (warningText[key]) {
+                desc.innerHTML = "<strong>Keterangan:</strong> " + warningText[key];
+            } else {
+                desc.innerHTML = "Halaman untuk menampilkan data anomali dari Google Sheets.";
+            }
+
+            loadingIndicator.style.display = "block";
+            errorMessage.style.display = "none";
+            tableHead.innerHTML = "";
+            tableBody.innerHTML = "";
+
+            try {
+                const response = await fetch(`${API_URL}?action=data&sheet=${encodeURIComponent(selectedSheet)}`);
+                const result = await response.json();
+
+                console.log("Sheet data:", result);
+
+                // Jika struktur langsung header & data
+                if (result.header && result.data) {
+                    globalData = result;
+                    populateFilters(result);
+                    renderTable(result, tableHead, tableBody);
+                }
+                // Jika struktur di dalam result.data
+                else if (result.data && result.data.header) {
+                    renderTable(result.data, tableHead, tableBody);
+                }
+                else {
+                    throw new Error("Format data tidak dikenali.");
+                }
+
+            } catch (error) {
+                console.error("Error loadSheetData:", error);
+                errorMessage.textContent = "Gagal memuat data: " + error.message;
+                errorMessage.style.display = "block";
+            } finally {
+                loadingIndicator.style.display = "none";
+            }
+        }
+
+        /* ================================
+           LOAD DATA DAN TAMPILKAN GRAFIK
+        ================================ */
+        async function loadGrafikData() {
+            const sheetSelect = document.getElementById('sheetSelectGrafik');
+            const chartContainer = document.getElementById('chartContainer');
+            const loadingGrafik = document.getElementById('loadingGrafik');
+            const errorGrafik = document.getElementById('errorGrafik');
+            
+            const selectedSheet = sheetSelect.value;
+            
+            if (!selectedSheet) {
+                chartContainer.style.display = 'none';
+                return;
+            }
+            
+            loadingGrafik.style.display = 'block';
+            errorGrafik.style.display = 'none';
+            chartContainer.style.display = 'none';
+            
+            try {
+                const response = await fetch(`${API_URL}?action=data&sheet=${encodeURIComponent(selectedSheet)}`);
+                const result = await response.json();
+                
+                let data;
+                if (result.header && result.data) {
+                    data = result;
+                } else if (result.data && result.data.header) {
+                    data = result.data;
+                } else {
+                    throw new Error("Format data tidak dikenali");
+                }
+                
+                // Proses data untuk grafik (by Kabupaten)
+                const chartData = processChartData(data);
+                
+                // Tampilkan grafik
+                renderChart(chartData);
+                
+                chartContainer.style.display = 'block';
+                
+            } catch (error) {
+                console.error("Error loadGrafikData:", error);
+                errorGrafik.textContent = "Gagal memuat data: " + error.message;
+                errorGrafik.style.display = 'block';
+            } finally {
+                loadingGrafik.style.display = 'none';
+            }
+        }
+
+        /* ================================
+   PROSES DATA UNTUK GRAFIK
+================================ */
+function processChartData(data) {
+    // Cari indeks kolom Kabupaten/Kota
+    const kabIndex = data.header.findIndex(h => 
+        h.toString().toLowerCase().includes('kab') || 
+        h.toString().toLowerCase().includes('kota')
+    );
+    
+    // Cari indeks flag_1
+    const flagIndex = data.header.findIndex(h => 
+        h.toString().toLowerCase() === 'flag_1'
+    );
+    
+    // Filter data: hanya yang flag_1 = 1
+    let filteredData = data.data;
+    if (flagIndex !== -1) {
+        filteredData = data.data.filter(row => row[flagIndex] == 1);
+    }
+    
+    // Agregasi data per Kabupaten
+    const kabCounts = {};
+    filteredData.forEach(row => {
+        const kab = kabIndex !== -1 ? row[kabIndex] : 'Unknown';
+        if (kab) {
+            kabCounts[kab] = (kabCounts[kab] || 0) + 1;
+        }
+    });
+    
+    // Urutkan berdasarkan NAMA KABUPATEN (A-Z / terkecil ke terbesar)
+    const sorted = Object.entries(kabCounts)
+        .sort((a, b) => a[0].localeCompare(b[0])); // Urut A-Z
+    
+    return {
+        labels: sorted.map(item => item[0]),
+        values: sorted.map(item => item[1])
+    };
+}
+
+        /* ================================
+           RENDER CHART
+        ================================ */
+        function renderChart(chartData) {
+            const ctx = document.getElementById('myChart').getContext('2d');
+            
+            // Hapus chart lama jika ada
+            if (myChart) {
+                myChart.destroy();
+            }
+            
+            // Buat chart baru
+            myChart = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: chartData.labels,
+                    datasets: [{
+                        label: 'Jumlah Anomali per Kabupaten/Kota',
+                        data: chartData.values,
+                        backgroundColor: 'rgba(102, 187, 106, 0.6)',
+                        borderColor: 'rgba(102, 187, 106, 1)',
+                        borderWidth: 1,
+                        borderRadius: 6
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            display: true,
+                            position: 'top'
+                        },
+                        title: {
+                            display: true,
+                            text: 'Grafik Anomali by Kabupaten/Kota',
+                            font: {
+                                size: 16,
+                                weight: 'bold'
+                            }
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            ticks: {
+                                stepSize: 1
+                            }
+                        },
+                        x: {
+                            ticks: {
+                                maxRotation: 45,
+                                minRotation: 45
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        /* ================================
+           RENDER TABLE (ANOMALI)
+        ================================ */
+        function renderTable(data, tableHead, tableBody) {
+            if (!data.header || data.header.length === 0) {
+                tableHead.innerHTML = '<tr><th>Tidak ada data</th></tr>';
+                return;
+            }
+
+            const selectedSheet = document.getElementById('sheetSelect').value;
+            const match = selectedSheet.match(/^R(\d+)/);
+
+            let filteredData = data.data;
+            let isRSheet = false;
+
+            if (match) {
+                const sheetNumber = parseInt(match[1]);
+                if (sheetNumber >= 108 && sheetNumber <= 901) {
+                    isRSheet = true;
+
+                    const flagIndex = data.header.findIndex(h =>
+                        h.toString().toLowerCase() === 'flag_1'
+                    );
+
+                    if (flagIndex !== -1) {
+                        filteredData = data.data.filter(row => row[flagIndex] == 1);
+                    }
+                }
+            }
+
+            /* ================= HEADER ================= */
+            let headerHtml = "<tr>";
+            data.header.forEach((header, i) => {
+                headerHtml += `<th>${header || "Kolom " + (i + 1)}</th>`;
+            });
+
+            if (isRSheet) {
+                headerHtml += `<th class="text-center">Sesuai Lapangan</th>`;
+                headerHtml += `<th class="text-center">Butuh Perbaikan</th>`;
+            }
+
+            headerHtml += "</tr>";
+            tableHead.innerHTML = headerHtml;
+
+            /* ================= BODY ================= */
+            let bodyHtml = "";
+
+            if (filteredData.length === 0) {
+                bodyHtml = `<tr><td colspan="${data.header.length}" class="text-center">
+                                Tidak ada data dengan flag_1 = 1
+                            </td></tr>`;
+            } else {
+                filteredData.forEach((row, rowIndex) => {
+                    const rowKey = selectedSheet + "_" + rowIndex;
+                    const savedStatus = JSON.parse(localStorage.getItem(rowKey) || "{}");
+
+                    bodyHtml += "<tr>";
+
+                    row.forEach(cell => {
+                        bodyHtml += `<td>${cell ?? ""}</td>`;
+                    });
+
+                    if (isRSheet) {
+                        bodyHtml += `
+                            <td class="text-center">
+                                <input type="checkbox"
+                                    ${savedStatus.sesuai ? "checked" : ""}
+                                    onchange="saveCheckbox('${rowKey}','sesuai',this.checked)">
+                            </td>
+                        `;
+
+                        bodyHtml += `
+                            <td class="text-center">
+                                <input type="checkbox"
+                                    ${savedStatus.perbaikan ? "checked" : ""}
+                                    onchange="saveCheckbox('${rowKey}','perbaikan',this.checked)">
+                            </td>
+                        `;
+                    }
+
+                    bodyHtml += "</tr>";
+                });
+            }
+
+            tableBody.innerHTML = bodyHtml;
+        }
+
+        /* ================================
+           POPULATE FILTERS
+        ================================ */
+        function populateFilters(data) {
+            const filterKab = document.getElementById("filterKab");
+            const filterSubround = document.getElementById("filterSubround");
+
+            filterKab.innerHTML = '<option value="">-- Semua Kabupaten/Kota --</option>';
+            filterSubround.innerHTML = '<option value="">-- Semua Subround --</option>';
+
+            if (!data.data || data.data.length === 0) return;
+
+            const kabSet = new Set();
+            const subroundSet = new Set();
+
+            data.data.forEach(row => {
+                if (row[1]) kabSet.add(row[1]);      // kolom 2
+                if (row[6]) subroundSet.add(row[6]); // kolom 7
+            });
+
+            kabSet.forEach(val => {
+                filterKab.innerHTML += `<option value="${val}">${val}</option>`;
+            });
+
+            subroundSet.forEach(val => {
+                filterSubround.innerHTML += `<option value="${val}">${val}</option>`;
+            });
+        }
+
+        /* ================================
+           APPLY FILTERS
+        ================================ */
+        function applyFilters() {
+            const filterKab = document.getElementById("filterKab").value;
+            const filterSubround = document.getElementById("filterSubround").value;
+
+            if (!globalData) return;
+
+            const tableHead = document.getElementById('tableHead');
+            const tableBody = document.getElementById('tableBody');
+
+            let filteredData = globalData.data;
+
+            // Filter berdasarkan Kabupaten
+            if (filterKab) {
+                filteredData = filteredData.filter(row => row[1] === filterKab);
+            }
+
+            // Filter berdasarkan Subround
+            if (filterSubround) {
+                filteredData = filteredData.filter(row => row[6] === filterSubround);
+            }
+
+            // Render ulang tabel
+            renderTable({
+                header: globalData.header,
+                data: filteredData
+            }, tableHead, tableBody);
+        }
+
+        /* ================================
+           SAVE CHECKBOX
+        ================================ */
+        function saveCheckbox(rowKey, type, checked) {
+            const savedStatus = JSON.parse(localStorage.getItem(rowKey) || "{}");
+            savedStatus[type] = checked;
+            localStorage.setItem(rowKey, JSON.stringify(savedStatus));
+        }
+		
+		/* ================================
+   KONFIGURASI API PETA
+================================ */
+const API_URL_MAP = "https://script.google.com/macros/s/AKfycbw1yAeI0KFwBQIjJEa8Ft0V9CAghFfN1p5jO9oH_0wn0RLn4kaEQdMjChHdcox9-LAN/exec";
+
+/* ================================
+   VARIABEL PETA
+================================ */
+let map;
+let markers = [];
+let dataAlokasi = [];
+let dataRealisasi = [];
+let headerAlokasi = [];
+let headerRealisasi = [];
+let streetsLayer, satelliteLayer;
+
+/* ================================
+   HELPER FUNCTIONS
+================================ */
+function colIndex(header, name) {
+    if (!header) return -1;
+    return header.findIndex(h => h.toLowerCase() === name.toLowerCase());
+}
+
+function colLetterToIndex(letter) {
+    let col = 0;
+    for (let i = 0; i < letter.length; i++) {
+        col = col * 26 + (letter.charCodeAt(i) - 64);
+    }
+    return col - 1;
+}
+
+function normalizeKab(val) {
+    if (val === null || val === undefined) return "";
+    return String(val).trim().replace(/^0+/, "");
+}
+
+/* ================================
+   INIT MAP
+================================ */
+function initMap() {
+    if (map) {
+        map.remove();
+    }
+    
+    map = L.map('map').setView([-2.5, 118], 5);
+    
+    streetsLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '&copy; OpenStreetMap contributors'
+    });
+    
+    satelliteLayer = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+        attribution: 'Tiles &copy; Esri'
+    });
+    
+    streetsLayer.addTo(map);
+    
+    // Map type change listener
+    document.getElementById('mapType').addEventListener('change', function() {
+        if (this.value === 'satellite') {
+            map.removeLayer(streetsLayer);
+            satelliteLayer.addTo(map);
+        } else {
+            map.removeLayer(satelliteLayer);
+            streetsLayer.addTo(map);
+        }
+    });
+    
+    // Load data
+    Promise.all([
+        fetch(API_URL_MAP + "?action=data&sheet=Alokasi").then(r => r.json()),
+        fetch(API_URL_MAP + "?action=data&sheet=Realisasi").then(r => r.json())
+    ]).then(([resAlokasi, resRealisasi]) => {
+        headerAlokasi = [...resAlokasi.header];
+        dataAlokasi = [...resAlokasi.data];
+        headerRealisasi = [...resRealisasi.header];
+        dataRealisasi = [...resRealisasi.data];
+        
+        console.log("headerAlokasi:", headerAlokasi);
+        console.log("headerRealisasi:", headerRealisasi);
+        
+        // Fill filters
+        fillFilterPeta();
+        
+        updateMap();
+    }).catch(err => console.error("Error loading map data:", err));
+}
+
+function fillFilterPeta() {
+    const filterKabPeta = document.getElementById('filterKabPeta');
+    const filterSubroundPeta = document.getElementById('filterSubroundPeta');
+    const filterSubsegmenPeta = document.getElementById('filterSubsegmenPeta');
+    const filterBulanPeta = document.getElementById('filterBulanPeta');
+    
+    const allData = [...dataAlokasi, ...dataRealisasi];
+    const allHeader = headerAlokasi.length > 0 ? headerAlokasi : headerRealisasi;
+    
+    const kabIdx = colIndex(allHeader, "kabupaten") !== -1 ? colIndex(allHeader, "kabupaten") : 1;
+    const subroundIdx = colIndex(allHeader, "subround") !== -1 ? colIndex(allHeader, "subround") : 6;
+    const subsegmenIdx = colIndex(allHeader, "subsegmen") !== -1 ? colIndex(allHeader, "subsegmen") : 7;
+    const bulanIdx = colIndex(allHeader, "bulan") !== -1 ? colIndex(allHeader, "bulan") : 8;
+    
+    const kabSet = new Set();
+    const subroundSet = new Set();
+    const subsegmenSet = new Set();
+    const bulanSet = new Set();
+    
+    allData.forEach(row => {
+        if (row[kabIdx]) kabSet.add(row[kabIdx]);
+        if (row[subroundIdx]) subroundSet.add(row[subroundIdx]);
+        if (row[subsegmenIdx]) subsegmenSet.add(row[subsegmenIdx]);
+        if (row[bulanIdx]) bulanSet.add(row[bulanIdx]);
+    });
+    
+    filterKabPeta.innerHTML = '<option value="ALL">Semua</option>';
+    filterSubroundPeta.innerHTML = '<option value="ALL">Semua</option>';
+    filterSubsegmenPeta.innerHTML = '<option value="ALL">Semua</option>';
+    filterBulanPeta.innerHTML = '<option value="ALL">Semua</option>';
+    
+    [...kabSet].sort().forEach(v => filterKabPeta.innerHTML += `<option value="${v}">${v}</option>`);
+    [...subroundSet].sort().forEach(v => filterSubroundPeta.innerHTML += `<option value="${v}">${v}</option>`);
+    [...subsegmenSet].sort().forEach(v => filterSubsegmenPeta.innerHTML += `<option value="${v}">${v}</option>`);
+    [...bulanSet].sort().forEach(v => filterBulanPeta.innerHTML += `<option value="${v}">${v}</option>`);
+}
+
+function updateMap() {
+    markers.forEach(marker => map.removeLayer(marker));
+    markers = [];
+
+    let allData = [
+        ...dataAlokasi.map(row => ({ ...row, sheet: "Alokasi" })),
+        ...dataRealisasi.map(row => ({ ...row, sheet: "Realisasi" }))
+    ];
+
+    // INDEX HEADER
+    const kabIdxAlokasi = colIndex(headerAlokasi, "kabupaten");
+    const subroundIdxAlokasi = colIndex(headerAlokasi, "subround");
+    const subsegmenIdxAlokasi = colIndex(headerAlokasi, "subsegmen");
+    const bulanIdxAlokasi = colIndex(headerAlokasi, "bulan");
+
+    const kabIdxRealisasi = colIndex(headerRealisasi, "kabupaten");
+    const subroundIdxRealisasi = colIndex(headerRealisasi, "subround");
+    const subsegmenIdxRealisasi = colIndex(headerRealisasi, "subsegmen");
+    const bulanIdxRealisasi = colIndex(headerRealisasi, "bulan");
+
+    // KOLOM REALISASI STATUS
+    let fkIdx = colIndex(headerRealisasi, "realisasi");
+
+    // FILTER
+    if (filterKabPeta.value !== "ALL") {
+        const filterKab = normalizeKab(filterKabPeta.value);
+        allData = allData.filter(r => {
+            let kab;
+            if (r.sheet === "Alokasi") {
+                let idxE = colLetterToIndex("E");
+                kab = normalizeKab(r[idxE]);
+            }
+            if (r.sheet === "Realisasi") {
+                let idxB = colLetterToIndex("B");
+                kab = normalizeKab(r[idxB]);
+            }
+            return kab === filterKab;
+        });
+    }
+    if (filterSubroundPeta.value !== "ALL")
+        allData = allData.filter(r => r[(r.sheet === "Alokasi" ? subroundIdxAlokasi : subroundIdxRealisasi)] == filterSubroundPeta.value);
+    if (filterSubsegmenPeta.value !== "ALL")
+        allData = allData.filter(r => r[(r.sheet === "Alokasi" ? subsegmenIdxAlokasi : subsegmenIdxRealisasi)] == filterSubsegmenPeta.value);
+    if (filterBulanPeta.value !== "ALL")
+        allData = allData.filter(r => r[(r.sheet === "Alokasi" ? bulanIdxAlokasi : bulanIdxRealisasi)] == filterBulanPeta.value);
+
+    // Precompute map Alokasi untuk lookup cepat berdasarkan AA
+    const alokasiMap = {};
+    dataAlokasi.forEach(row => {
+        const aaIdx = colLetterToIndex("AA");
+        const aaValue = row[aaIdx];
+        if (aaValue) {
+            const xIdx = colIndex(headerAlokasi, "x");
+            const yIdx = colIndex(headerAlokasi, "y");
+            const lng = parseFloat(row[xIdx]);
+            const lat = parseFloat(row[yIdx]);
+            if (!isNaN(lat) && !isNaN(lng)) {
+                alokasiMap[aaValue] = { lat, lng };
+            }
+        }
+    });
+
+    // LOOP DATA
+    allData.forEach((row, i) => {
+        let lat, lng;
+        let markerColor = "blue";
+        let popupData = [];
+        let distanceText = "";
+
+        // ================= ALOKASI =================
+        if (row.sheet === "Alokasi") {
+            const xIdx = colIndex(headerAlokasi, "x");
+            const yIdx = colIndex(headerAlokasi, "y");
+            lng = parseFloat(row[xIdx]);
+            lat = parseFloat(row[yIdx]);
+
+            const bIdx = 1;
+            const bValue = row[bIdx];
+            if (bValue === "U") {
+                markerColor = "blue";
+            } else if (bValue === "C") {
+                markerColor = "black";
+            } else {
+                markerColor = "blue";
+            }
+
+            let idxH = colLetterToIndex("H");
+            let idxI = colLetterToIndex("I");
+            let idxJ = colLetterToIndex("J");
+            let idxM = colLetterToIndex("M");
+            let idxAA = colLetterToIndex("AA");
+
+            popupData = [
+                row[idxH],
+                row[idxI],
+                row[idxJ],
+                row[idxM],
+                row[idxAA]
+            ];
+        }
+
+        // ================= REALISASI =================
+        if (row.sheet === "Realisasi") {
+            let aqIdx = colIndex(headerRealisasi, "AQ");
+            let arIdx = colIndex(headerRealisasi, "AR");
+            if (aqIdx === -1) aqIdx = 42;
+            if (arIdx === -1) arIdx = 43;
+
+            lng = parseFloat(row[aqIdx]);
+            lat = parseFloat(row[arIdx]);
+
+            // Hitung jarak menggunakan alokasiMap
+            let fjIdx = colLetterToIndex("FJ");
+            const subsegmenId = row[fjIdx];
+            const alokasiCoord = alokasiMap[subsegmenId];
+            if (alokasiCoord) {
+                const dist = haversineDistance(lat, lng, alokasiCoord.lat, alokasiCoord.lng);
+                distanceText = `<br><b>Jarak ke titik Alokasi (subsegmen ${subsegmenId}):</b> ${dist.toFixed(2)} meter`;
+            } else {
+                distanceText = `<br><b>Jarak ke titik Alokasi (subsegmen ${subsegmenId}):</b> Tidak ada titik Alokasi yang cocok`;
+            }
+
+            // ================= REALISASI =================
+let fkRaw = fkIdx !== -1 ? row[fkIdx] : "";
+let fk = String(fkRaw || "").trim().toLowerCase();
+
+// DEBUG (boleh dihapus setelah yakin benar)
+console.log("Nilai Realisasi:", fk);
+
+if (fk.includes("alokasi")) {
+    markerColor = "yellow";   // Realisasi Alokasi
+} else if (fk.includes("tambahan")) {
+    markerColor = "red";      // Realisasi Tambahan
+} else {
+    markerColor = "gray";     // Lainnya
+}
+
+            let idxFF = colLetterToIndex("FF");
+            let idxFG = colLetterToIndex("FG");
+            let idxFH = colLetterToIndex("FH");
+
+            popupData = [
+                row[idxFF],
+                row[idxFG],
+                row[idxFH],
+                row[fjIdx]
+            ];
+        }
+
+        // ================= DRAW MARKER =================
+        if (!isNaN(lat) && !isNaN(lng)) {
+            const m = L.circleMarker([lat, lng], {
+                color: markerColor,
+                fillColor: markerColor,
+                fillOpacity: 0.85,
+                radius: 5
+            }).addTo(map);
+
+            // popup tanpa nama kolom
+            let popupHTML = popupData
+                .filter(v => v !== undefined && v !== "")
+                .join("<br>");
+
+            // Tambahkan distanceText
+            popupHTML += distanceText;
+
+            // koordinat satu baris di bawah
+            let coordText = `<hr><b>Koordinat:</b> ${lat.toFixed(6)}, ${lng.toFixed(6)}`;
+            popupHTML += coordText;
+
+            m.bindPopup(popupHTML);
+            markers.push(m);
+        }
+    });
+
+    console.log("Total markers:", markers.length);
+}
+/* ================================
+   HAVERSINE DISTANCE
+================================ */
+function haversineDistance(lat1, lon1, lat2, lon2) {
+    const R = 6371000;
+    const dLat = (lat2 - lat1) * Math.PI / 180;
+    const dLon = (lon2 - lon1) * Math.PI / 180;
+    const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+              Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+              Math.sin(dLon / 2) * Math.sin(dLon / 2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    return R * c;
+}
+
+/* ================================
+   KONFIGURASI API HASIL UBINAN
+================================ */
+// Pastikan URL ini sesuai dengan Deployment Web App Google Sheets Anda
+const API_URL_HASIL = "https://script.google.com/macros/s/AKfycbx7Ixf5o_k27WexiCN-8B2rGurGPxUWBkw8ro2VsGEXOHPSNONKobyWtNmN_nv3o6D6KQ/exec";
+
+/* ================================
+   LOAD DATA HASIL UBINAN
+================================ */
+async function loadSheetDataUbinan() {
+    const sheetName = document.getElementById('sheetSelectUbinan').value;
+    const tableHead = document.getElementById('tableHeadUbinan');
+    const tableBody = document.getElementById('tableBodyUbinan');
+    const loading = document.getElementById('loadingUbinan');
+    const error = document.getElementById('errorUbinan');
+
+    if (!sheetName) return;
+
+    loading.style.display = "block";
+    error.style.display = "none";
+    tableHead.innerHTML = "";
+    tableBody.innerHTML = "";
+
+    try {
+        // Fetch data dari API
+        const response = await fetch(
+            `${API_URL_HASIL}?action=data&sheet=${encodeURIComponent(sheetName)}`
+        );
+        
+        // Cek apakah response berhasil (status 200-299)
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        
+        const result = await response.json();
+
+        if (!result.data || result.data.length === 0) {
+            throw new Error("Data tidak ditemukan di Sheet atau sheet kosong");
+        }
+
+        /* ================= JIKA PILIHAN "TAB BULAN" ================= */
+        if (sheetName === "Tab Bulan") {
+            tableHead.innerHTML = `
+            <tr>
+                <th rowspan="2" style="background:#4f7f2b;color:white;">Kode_Subsegmen</th>
+                <th colspan="12" style="background:#3f2a8c;color:white;">2023</th>
+                <th colspan="12" style="background:#c79800;color:white;">2024</th>
+                <th colspan="12" style="background:#2f6f1c;color:white;">2025</th>
+                <th colspan="12" style="background:#1e56b7;color:white;">2026</th>
+                <th rowspan="2" class="analisisHead">Analisis</th>
+                <th rowspan="2" class="analisisHead">Justifikasi</th>
+            </tr>
+            <tr>
+                ${["Jan","Feb","Mar","Apr","Mei","Jun","Jul","Agst","Sept","Okt","Nov","Des"].map(b=>`<th>${b}</th>`).join("")}
+                ${["Jan","Feb","Mar","Apr","Mei","Jun","Jul","Agst","Sept","Okt","Nov","Des"].map(b=>`<th>${b}</th>`).join("")}
+                ${["Jan","Feb","Mar","Apr","Mei","Jun","Jul","Agst","Sept","Okt","Nov","Des"].map(b=>`<th>${b}</th>`).join("")}
+                ${["Jan","Feb","Mar","Apr","Mei","Jun","Jul","Agst","Sept","Okt","Nov","Des"].map(b=>`<th>${b}</th>`).join("")}
+            </tr>
+            `;
+
+            let bodyHtml = "";
+            // Ambil data mulai baris ke-4 (index 3)
+            const dataMulaiBaris4 = result.data.slice(3);
+
+            dataMulaiBaris4.forEach(row => {
+                // Skip baris jika kolom pertama (Kode) kosong (biasanya footer/garis kosong)
+                if (!row[1]) return; 
+
+                bodyHtml += "<tr>";
+                bodyHtml += `<td><strong>${row[1] ?? ""}</strong></td>`; // Kolom B: Kode Subsegmen
+
+                // Total 4 tahun x 12 bulan
+const totalBulan = 12 * 4; 
+
+for (let i = 2; i < 2 + totalBulan; i++) {
+    let val = row[i] ?? "";
+    let bg = val ? "background-color:#f8f9fa;" : "";
+    bodyHtml += `<td style="${bg}">${val}</td>`;
+}
+
+                // Kolom Editable Analisis & Justifikasi
+                bodyHtml += `<td contenteditable="true" class="bg-light"></td>`;
+                bodyHtml += `<td contenteditable="true" class="bg-light"></td>`;
+                bodyHtml += "</tr>";
+            });
+            tableBody.innerHTML = bodyHtml;
+        } 
+        
+        /* ================= JIKA PILIHAN "TAB SR" ================= */
+else {
+
+    tableHead.innerHTML = `
+    <tr>
+        <th rowspan="2" style="background:#4f7f2b;color:white;">Kode_Subsegmen</th>
+        <th colspan="3" style="background:#3f2a8c;color:white;">2023</th>
+        <th colspan="3" style="background:#c79800;color:white;">2024</th>
+        <th colspan="3" style="background:#2f6f1c;color:white;">2025</th>
+        <th colspan="3" style="background:#1e56b7;color:white;">2026</th>
+        <th rowspan="2" class="analisisHead">Analisis</th>
+        <th rowspan="2" class="analisisHead">Justifikasi</th>
+    </tr>
+    <tr>
+        <th>SR1</th><th>SR2</th><th>SR3</th>
+        <th>SR1</th><th>SR2</th><th>SR3</th>
+        <th>SR1</th><th>SR2</th><th>SR3</th>
+        <th>SR1</th><th>SR2</th><th>SR3</th>
+    </tr>
+    `;
+
+    let bodyHtml = "";
+    const dataMulaiBaris4 = result.data.slice(3);
+
+    dataMulaiBaris4.forEach(row => {
+
+        // Kolom D sekarang adalah kode_subsegmen
+        const kodeSub = row[3];  
+
+        if (!kodeSub) return;
+
+        bodyHtml += "<tr>";
+        bodyHtml += `<td><strong>${kodeSub}</strong></td>`;
+
+        // Kolom E sampai P (index 4 - 15) = 12 SR
+        for (let i = 4; i <= 15; i++) {
+            bodyHtml += `<td>${row[i] ?? ""}</td>`;
+        }
+
+        // Kolom Q & R (index 16 & 17)
+        bodyHtml += `<td contenteditable="true" class="bg-light">${row[16] ?? ""}</td>`;
+        bodyHtml += `<td contenteditable="true" class="bg-light">${row[17] ?? ""}</td>`;
+
+        bodyHtml += "</tr>";
+    });
+
+    tableBody.innerHTML = bodyHtml;
+}
+
+    } catch (err) {
+        console.error("Error loadSheetDataUbinan:", err);
+        let msg = "Gagal memuat data: " + err.message;
+        if(err.message.includes("Failed to fetch")) {
+            msg = "Gagal terhubung ke server. Pastikan URL API benar daninternet stabil.";
+        }
+        error.textContent = msg;
+        error.style.display = "block";
+    } finally {
+        loading.style.display = "none";
+    }
+}
+
+/* ================================
+   FILTER SEARCH KODE SUBSEGMEN
+================================ */
+function filterKodeSub(){
+    // Ambil input dari kotak pencarian
+    const input = document.getElementById("searchKodeSub").value.toLowerCase();
+    // Ambil tabel
+    const table = document.getElementById("tableUbinan");
+    const tr = table.getElementsByTagName("tr");
+
+    // Loop semua baris data (mulai dari index 2, karena index 0 & 1 adalah headerthead)
+    for (let i = 2; i < tr.length; i++) {
+        // Ambil kolom pertama saja (Kode Subsegmen)
+        let td = tr[i].getElementsByTagName("td")[0];
+        
+        if(td){
+            let txtValue = td.textContent || td.innerText;
+            // Cek apakah teks cocok dengan input
+            if (txtValue.toLowerCase().indexOf(input) > -1) {
+                tr[i].style.display = ""; // Tampilkan
+            } else {
+                tr[i].style.display = "none"; // Sembunyikan
+            }
+        }
+    }
+}
+/* ================================
+   RENDER TABLE (UBINAN)
+================================ */
+function renderTableUbinan(data, tableHead, tableBody) {
+
+    if (!data.header || data.header.length === 0) {
+        tableHead.innerHTML = '<tr><th>Tidak ada data</th></tr>';
+        tableBody.innerHTML = '';
+        return;
+    }
+
+    /* HEADER */
+    let headerHtml = "<tr>";
+    data.header.forEach((header, i) => {
+        headerHtml += `<th>${header || "Kolom " + (i + 1)}</th>`;
+    });
+    headerHtml += "</tr>";
+    tableHead.innerHTML = headerHtml;
+
+    /* BODY */
+    let bodyHtml = "";
+
+    if (data.data.length === 0) {
+        bodyHtml = `<tr><td colspan="${data.header.length}" class="text-center">Tidak ada data</td></tr>`;
+    } else {
+        data.data.forEach(row => {
+            bodyHtml += "<tr>";
+            row.forEach(cell => {
+                bodyHtml += `<td>${cell ?? ""}</td>`;
+            });
+            bodyHtml += "</tr>";
+        });
+    }
+
+    tableBody.innerHTML = bodyHtml;
+}
+
+/* ================================
+   LOAD DATA SHEET (SUBROUND)
+================================ */
+async function loadSheetDataSR() {
+
+    const sheetSelect = document.getElementById('sheetSelectSR');
+    const tableHead = document.getElementById('tableHeadSR');
+    const tableBody = document.getElementById('tableBodySR');
+    const loadingSR = document.getElementById('loadingSR');
+    const errorSR = document.getElementById('errorSR');
+
+    const selectedSheet = sheetSelect.value;
+
+    if (!selectedSheet) {
+        tableHead.innerHTML = '<tr><th>Pilih sheet untuk menampilkan data</th></tr>';
+        tableBody.innerHTML = '';
+        return;
+    }
+
+    loadingSR.style.display = "block";
+    errorSR.style.display = "none";
+    tableHead.innerHTML = "";
+    tableBody.innerHTML = "";
+
+    try {
+
+        const response = await fetch(
+            `${API_URL}?action=data&sheet=${encodeURIComponent(selectedSheet)}`
+        );
+
+        const result = await response.json();
+
+        console.log("Sheet SR data:", result);
+
+        if (!result.header || !result.data) {
+            throw new Error("Format data tidak dikenali.");
+        }
+
+        globalDataSR = result;
+        renderTableSR(result, tableHead, tableBody);
+
+    } catch (error) {
+        console.error("Error loadSheetDataSR:", error);
+        errorSR.textContent = "Gagal memuat data: " + error.message;
+        errorSR.style.display = "block";
+    } finally {
+        loadingSR.style.display = "none";
+    }
+}
+
+/* ================================
+   RENDER TABLE (SUBROUND)
+================================ */
+function renderTableSR(data, tableHead, tableBody) {
+
+    if (!data.header || data.header.length === 0) {
+        tableHead.innerHTML = '<tr><th>Tidak ada data</th></tr>';
+        tableBody.innerHTML = '';
+        return;
+    }
+
+    /* HEADER */
+    let headerHtml = "<tr>";
+    data.header.forEach((header, i) => {
+        headerHtml += `<th>${header || "Kolom " + (i + 1)}</th>`;
+    });
+    headerHtml += "</tr>";
+    tableHead.innerHTML = headerHtml;
+
+    /* BODY */
+    let bodyHtml = "";
+
+    if (data.data.length === 0) {
+        bodyHtml = `<tr><td colspan="${data.header.length}" class="text-center">Tidak ada data</td></tr>`;
+    } else {
+        data.data.forEach(row => {
+            bodyHtml += "<tr>";
+            row.forEach(cell => {
+                bodyHtml += `<td>${cell ?? ""}</td>`;
+            });
+            bodyHtml += "</tr>";
+        });
+    }
+
+    tableBody.innerHTML = bodyHtml;
+}
+function filterKodeSub(){
+
+    const input = document.getElementById("searchKodeSub").value.toLowerCase();
+    const table = document.getElementById("tableUbinan");
+    const tr = table.getElementsByTagName("tr");
+
+    for (let i = 2; i < tr.length; i++) {
+
+        let td = tr[i].getElementsByTagName("td")[0];
+
+        if(td){
+            let txtValue = td.textContent || td.innerText;
+
+            if (txtValue.toLowerCase().indexOf(input) > -1) {
+                tr[i].style.display = "";
+            } else {
+                tr[i].style.display = "none";
+            }
+        }
+    }
+}	
+
+function showDatabasePetani() {
+  hideAllPages();
+
+  const page = document.getElementById("databasePetaniPage");
+  if (page) page.style.display = "block";
+
+  loadDatabasePetani();
+}
+
+async function loadDatabasePetani() {
+
+  const sheetName = "Database Petani";
+
+  try {
+
+    const response = await fetch(API_URL +
+      "?action=data&sheet=" + encodeURIComponent(sheetName));
+
+    const result = await response.json();
+
+    if (result.error) {
+      alert(result.error);
+      return;
+    }
+
+    renderDatabasePetani(result.data);
+
+  } catch (error) {
+    console.error("Gagal load Database Petani:", error);
+  }
+}
+
+
+
+function formatNIK(nik) {
+    if (!nik) return "";
+    let strNik = String(nik).trim();
+    // Jika panjang NIK kurang dari 6, kembalikan apa adanya
+    if (strNik.length < 6) return strNik;
+    // Ambil semua digit kecuali 6 terakhir, tambahkan *****
+    return strNik.slice(0, -6) + "******";
+}
+
+function renderDatabasePetani(data) {
+
+  const head = document.getElementById("dbPetaniHead");
+  const body = document.getElementById("dbPetaniBody");
+
+  head.innerHTML = `
+    <tr>
+      <th>Kode Subsegmen</th>
+      <th>Nama Kepala Keluarga</th>
+      <th>NIK Kepala Keluarga</th>
+      <th>Alamat</th>
+      <th>Nama Pengelola UTP</th>
+      <th>NIK Pengelola</th>
+      <th>No HP</th>
+    </tr>
+  `;
+
+  let html = "";
+
+  data.forEach(row => {
+
+    if (!row[0]) return;
+
+    html += `
+      <tr>
+        <td>${row[0] ?? ""}</td>
+        <td>${row[1] ?? ""}</td>
+        <td>${row[2] ?? ""}</td>
+        <td>${row[3] ?? ""}</td>
+        <td>${row[4] ?? ""}</td>
+        <td>${row[5] ?? ""}</td>
+        <td>${row[6] ?? ""}</td>
+      </tr>
+    `;
+  });
+
+  body.innerHTML = html;
+}	
+		
+const API_URL_PETANI = "https://script.google.com/macros/s/AKfycbyFbft8MN_uIlwPeL2K_N_HJw-ijDcoWyvYd3tkmo7ojUhiCi2YdAtA_QIxmqgfh-c1/exec";
+
+let allDataPetani = [];
+
+/* ================= LOAD DATA ================= */
+async function loadDatabasePetani() {
+
+    const loading = document.getElementById("loadingPetani");
+    const errorBox = document.getElementById("errorPetani");
+    const tbody = document.getElementById("dbPetaniBody");
+
+    loading.style.display = "block";
+    errorBox.style.display = "none";
+    tbody.innerHTML = "";
+
+    try {
+        const response = await fetch(API_URL_PETANI);
+        const data = await response.json();
+
+        allDataPetani = data;
+        renderDatabasePetani(data);
+
+    } catch (error) {
+        errorBox.style.display = "block";
+        errorBox.innerText = "Gagal mengambil data dari server.";
+        console.error(error);
+    }
+
+    loading.style.display = "none";
+}
+
+/* ================= RENDER TABLE ================= */
+function renderDatabasePetani(data) {
+
+    const tbody = document.getElementById("dbPetaniBody");
+    tbody.innerHTML = "";
+
+    if (!data || data.length === 0) {
+        tbody.innerHTML = `
+            <tr>
+                <td colspan="7" class="text-center">
+                    Data tidak ditemukan
+                </td>
+            </tr>`;
+        return;
+    }
+
+    data.forEach(row => {
+
+        const tr = document.createElement("tr");
+
+        tr.innerHTML = `
+            <td>${row.kode_subsegmen || ""}</td>
+            <td>${row["Nama Kepala Keluarga"] || ""}</td>
+            <td>${formatNIK(row["NIK Kepala Keluarga"])}</td> 
+            <td>${row.Alamat || ""}</td>
+            <td>${row["Nama Pengelola UTP"] || ""}</td>
+            <td>${formatNIK(row["NIK Nama Pengelola UTP"])}</td> 
+            <td>${row["No HP"] || ""}</td>
+        `;
+
+        tbody.appendChild(tr);
+    });
+}
+
+/* ================= FILTER SEARCH ================= */
+function filterDatabasePetani() {
+
+    const keyword = document
+        .getElementById("searchPetani")
+        .value
+        .toLowerCase();
+
+    const filtered = allDataPetani.filter(row =>
+        (row.kode_subsegmen || "").toLowerCase().includes(keyword) ||
+        (row["Nama Kepala Keluarga"] || "").toLowerCase().includes(keyword) ||
+        (row["Nama Pengelola UTP"] || "").toLowerCase().includes(keyword)
+    );
+
+    renderDatabasePetani(filtered);
+}
+
+/* ================= LOAD SAAT MENU DIKLIK ================= */
+document.querySelector('[data-target="database-petani"]')
+    .addEventListener("click", function () {
+        loadDatabasePetani();
+    });	
+	
+	
+	
+    </script>
+</body>
+</html>
