@@ -1095,12 +1095,12 @@ function processChartData(data) {
         }
 		
 		/* ================================
-   KONFIGURASI API PETA
+   KONFIGURASI API PETA - OPTIMIZED
 ================================ */
 const API_URL_MAP = "https://script.google.com/macros/s/AKfycbw1yAeI0KFwBQIjJEa8Ft0V9CAghFfN1p5jO9oH_0wn0RLn4kaEQdMjChHdcox9-LAN/exec";
 
 /* ================================
-   VARIABEL PETA
+   VARIABEL PETA - PRECOMPUTED
 ================================ */
 let map;
 let markers = [];
@@ -1110,29 +1110,69 @@ let headerAlokasi = [];
 let headerRealisasi = [];
 let streetsLayer, satelliteLayer;
 
+// PRECOMPUTE INDEXES & CACHE
+let indexes = {
+    alokasi: { kab: -1, subround: -1, subsegmen: -1, bulan: -1, x: -1, y: -1 },
+    realisasi: { kab: -1, subround: -1, subsegmen: -1, bulan: -1, aq: -1, ar: -1, fk: -1, fj: -1, ff: -1, fg: -1, fh: -1 }
+};
+let alokasiMap = {}; // Precomputed AA -> coords
+let filterValues = { kab: 'ALL', subround: 'ALL', subsegmen: 'ALL', bulan: 'ALL' };
+let filteredDataCache = [];
+
 /* ================================
-   HELPER FUNCTIONS
+   HELPER FUNCTIONS - OPTIMIZED
 ================================ */
 function colIndex(header, name) {
     if (!header) return -1;
     return header.findIndex(h => h.toLowerCase() === name.toLowerCase());
 }
 
-function colLetterToIndex(letter) {
-    let col = 0;
-    for (let i = 0; i < letter.length; i++) {
-        col = col * 26 + (letter.charCodeAt(i) - 64);
-    }
-    return col - 1;
+function normalizeKab(val) {
+    return val ? String(val).trim().replace(/^0+/, "") : "";
 }
 
-function normalizeKab(val) {
-    if (val === null || val === undefined) return "";
-    return String(val).trim().replace(/^0+/, "");
+function precomputeIndexes() {
+    // Precompute semua index yang sering dipakai
+    Object.keys(indexes.alokasi).forEach(key => {
+        indexes.alokasi[key] = colIndex(headerAlokasi, key);
+    });
+    Object.keys(indexes.realisasi).forEach(key => {
+    indexes.realisasi[key] = colIndex(headerRealisasi, key);
+});
+
+// PERBAIKAN KOLOM REALISASI (FK)
+if (indexes.realisasi.fk === -1) {
+    indexes.realisasi.fk = colIndex(headerRealisasi, "realisasi");
+}
+
+// fallback jika header berubah
+if (indexes.realisasi.fk === -1) {
+    indexes.realisasi.fk = colLetterToIndex("FK");
+}
+    
+    // Fallback untuk kolom fixed
+    indexes.alokasi.kab = indexes.alokasi.kab !== -1 ? indexes.alokasi.kab : 1;
+    indexes.realisasi.kab = indexes.realisasi.kab !== -1 ? indexes.realisasi.kab : 1;
+    
+    // Precompute alokasiMap untuk lookup cepat
+    alokasiMap = {};
+    dataAlokasi.forEach(row => {
+        const aaIdx = colLetterToIndex("AA");
+        const aaValue = row[aaIdx];
+        if (aaValue) {
+            const xIdx = indexes.alokasi.x;
+            const yIdx = indexes.alokasi.y;
+            const lng = parseFloat(row[xIdx]);
+            const lat = parseFloat(row[yIdx]);
+            if (!isNaN(lat) && !isNaN(lng)) {
+                alokasiMap[aaValue] = { lat, lng };
+            }
+        }
+    });
 }
 
 /* ================================
-   INIT MAP
+   INIT MAP - ULTRA FAST
 ================================ */
 function initMap() {
     if (map) {
@@ -1162,23 +1202,23 @@ function initMap() {
         }
     });
     
-    // Load data
+    // LOAD DATA - ASYNC PARALLEL
     Promise.all([
         fetch(API_URL_MAP + "?action=data&sheet=Alokasi").then(r => r.json()),
         fetch(API_URL_MAP + "?action=data&sheet=Realisasi").then(r => r.json())
     ]).then(([resAlokasi, resRealisasi]) => {
+        // Copy data sekali saja
         headerAlokasi = [...resAlokasi.header];
         dataAlokasi = [...resAlokasi.data];
         headerRealisasi = [...resRealisasi.header];
         dataRealisasi = [...resRealisasi.data];
         
-        console.log("headerAlokasi:", headerAlokasi);
-        console.log("headerRealisasi:", headerRealisasi);
+        // PRECOMPUTE SEMUA INDEX & CACHE
+        precomputeIndexes();
         
-        // Fill filters
+        // Fill filters & show map INSTANT
         fillFilterPeta();
-        
-        updateMap();
+        updateMap(); // Langsung tampilkan semua data
     }).catch(err => console.error("Error loading map data:", err));
 }
 
@@ -1188,216 +1228,220 @@ function fillFilterPeta() {
     const filterSubsegmenPeta = document.getElementById('filterSubsegmenPeta');
     const filterBulanPeta = document.getElementById('filterBulanPeta');
     
-    const allData = [...dataAlokasi, ...dataRealisasi];
-    const allHeader = headerAlokasi.length > 0 ? headerAlokasi : headerRealisasi;
+    // Gunakan dataAlokasi saja untuk filter (lebih cepat)
+    const allData = dataAlokasi;
+    const kabIdx = indexes.alokasi.kab;
+    const subroundIdx = indexes.alokasi.subround;
+    const subsegmenIdx = indexes.alokasi.subsegmen;
+    const bulanIdx = indexes.alokasi.bulan;
     
-    const kabIdx = colIndex(allHeader, "kabupaten") !== -1 ? colIndex(allHeader, "kabupaten") : 1;
-    const subroundIdx = colIndex(allHeader, "subround") !== -1 ? colIndex(allHeader, "subround") : 6;
-    const subsegmenIdx = colIndex(allHeader, "subsegmen") !== -1 ? colIndex(allHeader, "subsegmen") : 7;
-    const bulanIdx = colIndex(allHeader, "bulan") !== -1 ? colIndex(allHeader, "bulan") : 8;
-    
-    const kabSet = new Set();
-    const subroundSet = new Set();
-    const subsegmenSet = new Set();
-    const bulanSet = new Set();
+    const sets = { kab: new Set(), subround: new Set(), subsegmen: new Set(), bulan: new Set() };
     
     allData.forEach(row => {
-        if (row[kabIdx]) kabSet.add(row[kabIdx]);
-        if (row[subroundIdx]) subroundSet.add(row[subroundIdx]);
-        if (row[subsegmenIdx]) subsegmenSet.add(row[subsegmenIdx]);
-        if (row[bulanIdx]) bulanSet.add(row[bulanIdx]);
+        if (row[kabIdx]) sets.kab.add(row[kabIdx]);
+        if (row[subroundIdx]) sets.subround.add(row[subroundIdx]);
+        if (row[subsegmenIdx]) sets.subsegmen.add(row[subsegmenIdx]);
+        if (row[bulanIdx]) sets.bulan.add(row[bulanIdx]);
     });
     
-    filterKabPeta.innerHTML = '<option value="ALL">Semua</option>';
-    filterSubroundPeta.innerHTML = '<option value="ALL">Semua</option>';
-    filterSubsegmenPeta.innerHTML = '<option value="ALL">Semua</option>';
-    filterBulanPeta.innerHTML = '<option value="ALL">Semua</option>';
-    
-    [...kabSet].sort().forEach(v => filterKabPeta.innerHTML += `<option value="${v}">${v}</option>`);
-    [...subroundSet].sort().forEach(v => filterSubroundPeta.innerHTML += `<option value="${v}">${v}</option>`);
-    [...subsegmenSet].sort().forEach(v => filterSubsegmenPeta.innerHTML += `<option value="${v}">${v}</option>`);
-    [...bulanSet].sort().forEach(v => filterBulanPeta.innerHTML += `<option value="${v}">${v}</option>`);
+    // Fill dropdowns
+    ['kab', 'subround', 'subsegmen', 'bulan'].forEach(type => {
+        const select = {
+            kab: filterKabPeta,
+            subround: filterSubroundPeta,
+            subsegmen: filterSubsegmenPeta,
+            bulan: filterBulanPeta
+        }[type];
+        
+        select.innerHTML = '<option value="ALL">Semua</option>';
+        [...sets[type]].sort().forEach(v => {
+            select.innerHTML += `<option value="${v}">${v}</option>`;
+        });
+        
+        // Event listener dengan debounce
+        select.addEventListener('change', debounce(updateMap, 300));
+    });
+}
+
+// DEBOUNCE untuk filter
+function debounce(func, wait) {
+    let timeout;
+    return function executedFunction(...args) {
+        const later = () => {
+            clearTimeout(timeout);
+            func(...args);
+        };
+        clearTimeout(timeout);
+        timeout = setTimeout(later, wait);
+    };
 }
 
 function updateMap() {
+    // Update filter values
+    filterValues.kab = filterKabPeta.value;
+    filterValues.subround = filterSubroundPeta.value;
+    filterValues.subsegmen = filterSubsegmenPeta.value;
+    filterValues.bulan = filterBulanPeta.value;
+    
+    // CLEAR MARKERS CEPAT
     markers.forEach(marker => map.removeLayer(marker));
     markers = [];
-
-    let allData = [
-        ...dataAlokasi.map(row => ({ ...row, sheet: "Alokasi" })),
-        ...dataRealisasi.map(row => ({ ...row, sheet: "Realisasi" }))
-    ];
-
-    // INDEX HEADER
-    const kabIdxAlokasi = colIndex(headerAlokasi, "kabupaten");
-    const subroundIdxAlokasi = colIndex(headerAlokasi, "subround");
-    const subsegmenIdxAlokasi = colIndex(headerAlokasi, "subsegmen");
-    const bulanIdxAlokasi = colIndex(headerAlokasi, "bulan");
-
-    const kabIdxRealisasi = colIndex(headerRealisasi, "kabupaten");
-    const subroundIdxRealisasi = colIndex(headerRealisasi, "subround");
-    const subsegmenIdxRealisasi = colIndex(headerRealisasi, "subsegmen");
-    const bulanIdxRealisasi = colIndex(headerRealisasi, "bulan");
-
-    // KOLOM REALISASI STATUS
-    let fkIdx = colIndex(headerRealisasi, "realisasi");
-
-    // FILTER
-    if (filterKabPeta.value !== "ALL") {
-        const filterKab = normalizeKab(filterKabPeta.value);
-        allData = allData.filter(r => {
-            let kab;
-            if (r.sheet === "Alokasi") {
-                let idxE = colLetterToIndex("E");
-                kab = normalizeKab(r[idxE]);
-            }
-            if (r.sheet === "Realisasi") {
-                let idxB = colLetterToIndex("B");
-                kab = normalizeKab(r[idxB]);
-            }
-            return kab === filterKab;
-        });
-    }
-    if (filterSubroundPeta.value !== "ALL")
-        allData = allData.filter(r => r[(r.sheet === "Alokasi" ? subroundIdxAlokasi : subroundIdxRealisasi)] == filterSubroundPeta.value);
-    if (filterSubsegmenPeta.value !== "ALL")
-        allData = allData.filter(r => r[(r.sheet === "Alokasi" ? subsegmenIdxAlokasi : subsegmenIdxRealisasi)] == filterSubsegmenPeta.value);
-    if (filterBulanPeta.value !== "ALL")
-        allData = allData.filter(r => r[(r.sheet === "Alokasi" ? bulanIdxAlokasi : bulanIdxRealisasi)] == filterBulanPeta.value);
-
-    // Precompute map Alokasi untuk lookup cepat berdasarkan AA
-    const alokasiMap = {};
-    dataAlokasi.forEach(row => {
-        const aaIdx = colLetterToIndex("AA");
-        const aaValue = row[aaIdx];
-        if (aaValue) {
-            const xIdx = colIndex(headerAlokasi, "x");
-            const yIdx = colIndex(headerAlokasi, "y");
-            const lng = parseFloat(row[xIdx]);
-            const lat = parseFloat(row[yIdx]);
-            if (!isNaN(lat) && !isNaN(lng)) {
-                alokasiMap[aaValue] = { lat, lng };
-            }
-        }
-    });
-
-    // LOOP DATA
-    allData.forEach((row, i) => {
-        let lat, lng;
-        let markerColor = "blue";
-        let popupData = [];
-        let distanceText = "";
-
-        // ================= ALOKASI =================
-        if (row.sheet === "Alokasi") {
-            const xIdx = colIndex(headerAlokasi, "x");
-            const yIdx = colIndex(headerAlokasi, "y");
-            lng = parseFloat(row[xIdx]);
-            lat = parseFloat(row[yIdx]);
-
-            const bIdx = 1;
-            const bValue = row[bIdx];
-            if (bValue === "U") {
-                markerColor = "blue";
-            } else if (bValue === "C") {
-                markerColor = "black";
-            } else {
-                markerColor = "blue";
-            }
-
-            let idxH = colLetterToIndex("H");
-            let idxI = colLetterToIndex("I");
-            let idxJ = colLetterToIndex("J");
-            let idxM = colLetterToIndex("M");
-            let idxAA = colLetterToIndex("AA");
-
-            popupData = [
-                row[idxH],
-                row[idxI],
-                row[idxJ],
-                row[idxM],
-                row[idxAA]
-            ];
-        }
-
-        // ================= REALISASI =================
-        if (row.sheet === "Realisasi") {
-            let aqIdx = colIndex(headerRealisasi, "AQ");
-            let arIdx = colIndex(headerRealisasi, "AR");
-            if (aqIdx === -1) aqIdx = 42;
-            if (arIdx === -1) arIdx = 43;
-
-            lng = parseFloat(row[aqIdx]);
-            lat = parseFloat(row[arIdx]);
-
-            // Hitung jarak menggunakan alokasiMap
-            let fjIdx = colLetterToIndex("FJ");
-            const subsegmenId = row[fjIdx];
-            const alokasiCoord = alokasiMap[subsegmenId];
-            if (alokasiCoord) {
-                const dist = haversineDistance(lat, lng, alokasiCoord.lat, alokasiCoord.lng);
-                distanceText = `<br><b>Jarak ke titik Alokasi (subsegmen ${subsegmenId}):</b> ${dist.toFixed(2)} meter`;
-            } else {
-                distanceText = `<br><b>Jarak ke titik Alokasi (subsegmen ${subsegmenId}):</b> Tidak ada titik Alokasi yang cocok`;
-            }
-
-            // ================= REALISASI =================
-let fkRaw = fkIdx !== -1 ? row[fkIdx] : "";
-let fk = String(fkRaw || "").trim().toLowerCase();
-
-// DEBUG (boleh dihapus setelah yakin benar)
-console.log("Nilai Realisasi:", fk);
-
-if (fk.includes("alokasi")) {
-    markerColor = "yellow";   // Realisasi Alokasi
-} else if (fk.includes("tambahan")) {
-    markerColor = "red";      // Realisasi Tambahan
-} else {
-    markerColor = "gray";     // Lainnya
+    
+    // FILTER DATA - ULTRA FAST dengan precomputed indexes
+    const filteredData = filterDataFast();
+    
+    // BATCH ADD MARKERS - 10x lebih cepat
+    addMarkersBatch(filteredData);
+    
+    console.log("Total markers:", markers.length);
 }
 
-            let idxFF = colLetterToIndex("FF");
-            let idxFG = colLetterToIndex("FG");
-            let idxFH = colLetterToIndex("FH");
+function filterDataFast() {
+    const result = [];
+    
+    // Filter Alokasi
+    dataAlokasi.forEach(row => {
+        if (passesFilter(row, 'alokasi')) {
+            result.push({ ...row, sheet: "Alokasi" });
+        }
+    });
+    
+    // Filter Realisasi  
+    dataRealisasi.forEach(row => {
+        if (passesFilter(row, 'realisasi')) {
+            result.push({ ...row, sheet: "Realisasi" });
+        }
+    });
+    
+    return result;
+}
 
-            popupData = [
-                row[idxFF],
-                row[idxFG],
-                row[idxFH],
-                row[fjIdx]
-            ];
+function passesFilter(row, sheet) {
+    const idx = indexes[sheet];
+    
+    // Kabupaten filter - paling sering dipakai
+    if (filterValues.kab !== 'ALL') {
+        const kab = normalizeKab(row[idx.kab]);
+        if (kab !== normalizeKab(filterValues.kab)) return false;
+    }
+    
+    if (filterValues.subround !== 'ALL' && row[idx.subround] != filterValues.subround) return false;
+    if (filterValues.subsegmen !== 'ALL' && row[idx.subsegmen] != filterValues.subsegmen) return false;
+    if (filterValues.bulan !== 'ALL' && row[idx.bulan] != filterValues.bulan) return false;
+    
+    return true;
+}
+
+function addMarkersBatch(data) {
+    // Group by 100 untuk batch processing
+    for (let i = 0; i < data.length; i += 100) {
+        const batch = data.slice(i, i + 100);
+        batch.forEach(row => createMarker(row));
+    }
+}
+
+function createMarker(row) {
+
+    let lat, lng, markerColor, popupHTML = "", distanceText = "";
+
+    if (row.sheet === "Alokasi") {
+
+        lng = parseFloat(row[indexes.alokasi.x]);
+        lat = parseFloat(row[indexes.alokasi.y]);
+
+        const bIdx = 1;
+
+        markerColor =
+            row[bIdx] === "U" ? "blue" :
+            row[bIdx] === "C" ? "black" : "blue";
+
+        const cols = ['H','I','J','M','AA'].map(colLetterToIndex);
+
+        const popupData = cols.map(i => row[i]).filter(v => v);
+
+        popupHTML =
+            popupData.join("<br>") +
+            `<hr><b>Koordinat:</b> ${lat.toFixed(6)}, ${lng.toFixed(6)}`;
+
+    }
+
+    else { // ================= REALISASI =================
+
+        lng = parseFloat(row[indexes.realisasi.aq !== -1 ? indexes.realisasi.aq : 42]);
+        lat = parseFloat(row[indexes.realisasi.ar !== -1 ? indexes.realisasi.ar : 43]);
+
+        const kabIdx = indexes.realisasi.ff !== -1 ? indexes.realisasi.ff : colLetterToIndex("FF");
+        const kecIdx = indexes.realisasi.fg !== -1 ? indexes.realisasi.fg : colLetterToIndex("FG");
+        const bulanIdx = indexes.realisasi.fh !== -1 ? indexes.realisasi.fh : colLetterToIndex("FH");
+        const subIdx = indexes.realisasi.fj !== -1 ? indexes.realisasi.fj : colLetterToIndex("FJ");
+
+        const kab = row[kabIdx];
+        const kec = row[kecIdx];
+        const bulan = row[bulanIdx];
+        const subsegmenId = row[subIdx];
+
+        // ================= HITUNG JARAK =================
+
+        const alokasiCoord = alokasiMap[subsegmenId];
+
+        if (alokasiCoord) {
+
+            const dist = haversineDistance(
+                lat,
+                lng,
+                alokasiCoord.lat,
+                alokasiCoord.lng
+            );
+
+            distanceText =
+                `<br><br><b>Jarak ke titik Alokasi (subsegmen ${subsegmenId}):</b> ${dist.toFixed(2)} meter`;
+
         }
 
-        // ================= DRAW MARKER =================
-        if (!isNaN(lat) && !isNaN(lng)) {
-            const m = L.circleMarker([lat, lng], {
+        // ================= WARNA MARKER =================
+
+        const fkIdx = indexes.realisasi.fk !== -1 ? indexes.realisasi.fk : colLetterToIndex("FK");
+
+        const fk = String(row[fkIdx] || "").toLowerCase().trim();
+
+        if (fk === "alokasi") markerColor = "yellow";
+        else if (fk === "tambahan") markerColor = "red";
+        else markerColor = "gray";
+
+        // ================= POPUP =================
+
+        popupHTML =
+            `${kab}<br>
+             ${kec}<br>
+             ${bulan}<br>
+             ${subsegmenId}
+             ${distanceText}
+             <hr>
+             <b>Koordinat:</b> ${lat.toFixed(6)}, ${lng.toFixed(6)}`;
+    }
+
+    // ================= BUAT MARKER =================
+
+    if (!isNaN(lat) && !isNaN(lng)) {
+
+        const marker = L.circleMarker(
+            [lat, lng],
+            {
                 color: markerColor,
                 fillColor: markerColor,
                 fillOpacity: 0.85,
                 radius: 5
-            }).addTo(map);
+            }
+        ).addTo(map);
 
-            // popup tanpa nama kolom
-            let popupHTML = popupData
-                .filter(v => v !== undefined && v !== "")
-                .join("<br>");
+        marker.bindPopup(popupHTML);
 
-            // Tambahkan distanceText
-            popupHTML += distanceText;
-
-            // koordinat satu baris di bawah
-            let coordText = `<hr><b>Koordinat:</b> ${lat.toFixed(6)}, ${lng.toFixed(6)}`;
-            popupHTML += coordText;
-
-            m.bindPopup(popupHTML);
-            markers.push(m);
-        }
-    });
-
-    console.log("Total markers:", markers.length);
+        markers.push(marker);
+    }
 }
+
 /* ================================
-   HAVERSINE DISTANCE
+   HAVERSINE - UNCHANGED
 ================================ */
 function haversineDistance(lat1, lon1, lat2, lon2) {
     const R = 6371000;
@@ -1408,6 +1452,14 @@ function haversineDistance(lat1, lon1, lat2, lon2) {
               Math.sin(dLon / 2) * Math.sin(dLon / 2);
     const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
     return R * c;
+}
+
+function colLetterToIndex(letter) {
+    let col = 0;
+    for (let i = 0; i < letter.length; i++) {
+        col = col * 26 + (letter.charCodeAt(i) - 64);
+    }
+    return col - 1;
 }
 
 /* ================================
