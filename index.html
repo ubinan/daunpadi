@@ -248,6 +248,9 @@ body {
             <a class="nav-link" href="#" data-target="hasil-ubinan-subround">
                 <i class="bi bi-file-earmark-text"></i> Hasil Ubinan Subround
             </a>
+			<a class="nav-link" href="#" data-target="grafik-hasil-ubinan">
+			<i class="bi bi-graph-up"></i> Grafik Hasil Ubinan
+			</a>
             
             <!-- PERBAIKAN: Sama seperti menu lain, gunakan data-target -->
             <a class="nav-link" href="#" data-target="database-petani">
@@ -466,6 +469,31 @@ body {
     </div>
 </div>
 
+<!-- Grafik Hasil Ubinan Section -->
+<div id="grafik-hasil-ubinan" class="content-section">
+    <div class="header">
+        <h2><i class="bi bi-graph-up"></i> Grafik Hasil Ubinan</h2>
+        <p>Grafik interaktif berdasarkan kabupaten dari data bulanan.</p>
+    </div>
+
+    <div class="card p-4">
+
+        <div class="mb-3">
+            <label class="form-label fw-bold">Pilih Kabupaten:</label>
+            <select id="kabSelectChart" class="form-select"></select>
+        </div>
+
+        <div id="loadingChartKab" class="text-center my-3" style="display:none;">
+            <div class="spinner-border text-primary"></div>
+            <p>Memuat grafik...</p>
+        </div>
+
+        <canvas id="chartKabupaten"></canvas>
+
+        <div id="errorChartKab" class="alert alert-danger mt-3" style="display:none;"></div>
+
+    </div>
+</div>
 
 <!-- Database Petani Section -->
 <div id="database-petani" class="content-section">
@@ -1954,6 +1982,121 @@ document.querySelector('[data-target="database-petani"]')
     });	
 	
 	
+	const API_CHART = "https://script.google.com/macros/s/AKfycby3W0prrsVWYISVRNyvLjO-D4gGYCHu8ngoFZBeRx7euFlWYJYOokuin7tnbi7m-zEd/exec";
+
+let dataKab = [];
+let chartKab;
+
+// ================= LOAD DATA =================
+function loadGrafikKabupaten() {
+    const loading = document.getElementById("loadingChartKab");
+    const error = document.getElementById("errorChartKab");
+
+    loading.style.display = "block";
+    error.style.display = "none";
+
+    fetch(API_CHART)
+        .then(res => res.json())
+        .then(data => {
+            dataKab = data;
+            initDropdownKab();
+            updateChartKab(0);
+            loading.style.display = "none";
+        })
+        .catch(err => {
+            loading.style.display = "none";
+            error.style.display = "block";
+            error.innerText = "Gagal load data";
+            console.error(err);
+        });
+}
+
+// ================= DROPDOWN =================
+function initDropdownKab() {
+    const select = document.getElementById("kabSelectChart");
+    select.innerHTML = "";
+
+    dataKab.forEach((d, i) => {
+        const opt = document.createElement("option");
+        opt.value = i;
+        opt.textContent = d.kab;
+        select.appendChild(opt);
+    });
+
+    select.addEventListener("change", (e) => {
+        updateChartKab(e.target.value);
+    });
+}
+
+// ================= UPDATE CHART =================
+function updateChartKab(index) {
+    const d = dataKab[index];
+
+    const labels = [
+        "Jan","Feb","Mar","Apr","Mei","Jun",
+        "Jul","Agu","Sep","Okt","Nov","Des"
+    ];
+
+    if (chartKab) chartKab.destroy();
+
+    chartKab = new Chart(document.getElementById("chartKabupaten"), {
+        type: "line",
+        data: {
+            labels: labels,
+            datasets: [
+                {
+                    label: "Target",
+                    data: d.garis1,
+                    borderWidth: 2,
+                    tension: 0.3
+                },
+                {
+                    label: "Cadangan",
+                    data: d.garis2,
+                    borderWidth: 2,
+                    tension: 0.3
+                },
+                {
+                    label: "Realisasi",
+                    data: d.garis3,
+                    borderWidth: 2,
+                    tension: 0.3
+                }
+            ]
+        },
+        options: {
+            responsive: true
+        }
+    });
+}
+
+// ================= NAVIGASI MENU =================
+document.querySelectorAll('.nav-link').forEach(link => {
+    link.addEventListener('click', function () {
+        const target = this.getAttribute('data-target');
+
+        // sembunyikan semua
+        document.querySelectorAll('.content-section').forEach(sec => {
+            sec.classList.remove('active');
+        });
+
+        // tampilkan target
+        document.getElementById(target).classList.add('active');
+
+        // aktifkan menu
+        document.querySelectorAll('.nav-link').forEach(l => l.classList.remove('active'));
+        this.classList.add('active');
+
+        // 🔥 LOAD KHUSUS GRAFIK HASIL UBINAN
+        if (target === "grafik-hasil-ubinan" && dataKab.length === 0) {
+            loadGrafikKabupaten();
+        }
+    });
+});
+	
+if (target === "grafik-hasil-ubinan" && dataKab.length === 0) {
+    loadGrafikKabupaten();
+}	
 	
     </script>
 </body>
